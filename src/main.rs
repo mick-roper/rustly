@@ -138,8 +138,8 @@ fn player_input(gs: &mut State, ctx: &mut Rltk) {
     }
 }
 
-fn xy_idx(x: i32, y: i32) -> usize {
-    (y * 80 + x) as usize
+fn xy_idx(x: i32, y: i32, w: i32) -> usize {
+    ((y * w) + x) as usize
 }
 
 fn new_map() -> Vec<TileType> {
@@ -149,13 +149,13 @@ fn new_map() -> Vec<TileType> {
     let mut map = vec![TileType::Floor; (w*h) as usize];
 
     for x in 0..w {
-        map[xy_idx(x, 0)] = TileType::Wall;
-        map[xy_idx(x, w-1)] = TileType::Wall;
+        map[xy_idx(x, 0, w)] = TileType::Wall;
+        map[xy_idx(x, w-1, w)] = TileType::Wall;
     }
 
     for y in 0..h {
-        map[xy_idx(0, y)] = TileType::Wall;
-        map[xy_idx(h-1, y)] = TileType::Wall;
+        map[xy_idx(0, y, w)] = TileType::Wall;
+        map[xy_idx(h-1, y, w)] = TileType::Wall;
     }
 
     let mut rng = rltk::RandomNumberGenerator::new();
@@ -163,8 +163,8 @@ fn new_map() -> Vec<TileType> {
     for _ in 0..400 {
         let x = rng.roll_dice(1, w-1);
         let y = rng.roll_dice(1, h-1);
-        let idx = xy_idx(x, y);
-        let exclude = xy_idx(40, 25);
+        let idx = xy_idx(x, y, w);
+        let exclude = xy_idx(40, 25, w);
         if idx != exclude {
             map[idx] = TileType::Wall;
         }
