@@ -3,6 +3,9 @@ use specs::prelude::*;
 use specs_derive::Component;
 use std::cmp::{max, min};
 
+mod map;
+pub use map::*;
+
 #[derive(Component)]
 struct State {
     ecs: World
@@ -70,10 +73,6 @@ impl<'a> System<'a> for LeftWalker {
     }
 }
 
-#[derive(PartialEq, Copy, Clone)]
-enum TileType {
-    Wall, Floor
-}
 
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;
@@ -140,40 +139,4 @@ fn player_input(gs: &mut State, ctx: &mut Rltk) {
 
 fn xy_idx(x: i32, y: i32, w: i32) -> usize {
     ((y * w) + x) as usize
-}
-
-fn new_map() -> Vec<TileType> {
-    let w:i32 = 80;
-    let h:i32 = 50;
-
-    let mut map = vec![TileType::Floor; (w*h) as usize];
-
-    for x in 0..w {
-        map[xy_idx(x, 0, w)] = TileType::Wall;
-        map[xy_idx(x, w-1, w)] = TileType::Wall;
-    }
-
-    for y in 0..h {
-        map[xy_idx(0, y, w)] = TileType::Wall;
-        map[xy_idx(h-1, y, w)] = TileType::Wall;
-    }
-
-    let mut rng = rltk::RandomNumberGenerator::new();
-
-    for _ in 0..400 {
-        let x = rng.roll_dice(1, w-1);
-        let y = rng.roll_dice(1, h-1);
-        let idx = xy_idx(x, y, w);
-        let exclude = xy_idx(40, 25, w);
-        if idx != exclude {
-            map[idx] = TileType::Wall;
-        }
-    }
-
-    map
-}
-
-fn draw_map(map: &[TileType], ctx: &mut Rltk) {
-    let mut x = 0;
-    let mut y = 0;
 }
