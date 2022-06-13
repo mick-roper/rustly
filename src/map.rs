@@ -1,62 +1,136 @@
-use rltk::{RandomNumberGenerator, DiceType};
+use rltk::{ RGB, Rltk, RandomNumberGenerator };
+use super::{Rect};
+use std::cmp::{max, min};
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum TileType {
-  Wall,
-  Floor
+    Wall, Floor
 }
 
-pub struct Map {
-  w: i32,
-  h: i32,
-  tiles: Vec<TileType>
+pub fn xy_idx(x: i32, y: i32) -> usize {
+    (y as usize * 80) + x as usize
 }
 
-struct Room {
-  x: i32,
-  y: i32,
-  w: i32,
-  h: i32,
-}
+/// Makes a map with solid boundaries and 400 randomly placed walls. No guarantees that it won't
+/// look awful.
+pub fn new_map_test() -> Vec<TileType> {
+    let mut map = vec![TileType::Floor; 80*50];
 
-impl Map {
-  pub fn new(w: i32, h: i32) -> Result<Map, String> {
-    let tiles = vec![TileType::Floor; (w * h) as usize];
-    let mut rng = RandomNumberGenerator::new();
-
-    const max_width: i32 = 20;
-    const max_height: i32 = 20;
-
-    let mut rooms = Vec::new();
-
-    // draw some rooms
-    let mut counter = 0;
-    while counter < 10 {
-      let room = Room {
-        x: rng.range(5, w - max_width*2),
-        y: rng.range(5, h - max_height*2),
-        w: rng.range(5, max_width),
-        h: rng.range(5, max_height),
-      };
-
-      for r in rooms.iter() {
-        if room.intersects(&r) {
-          continue
-        }
-      }
-
-      rooms.push(room);
-
-      counter+=1;
+    // Make the boundaries walls
+    for x in 0..80 {
+        map[xy_idx(x, 0)] = TileType::Wall;
+        map[xy_idx(x, 49)] = TileType::Wall;
+    }
+    for y in 0..50 {
+        map[xy_idx(0, y)] = TileType::Wall;
+        map[xy_idx(79, y)] = TileType::Wall;
     }
 
-    Ok(Map{ w, h, tiles })
-  }
+    // Now we'll randomly splat a bunch of walls. It won't be pretty, but it's a decent illustration.
+    // First, obtain the thread-local RNG:
+    let mut rng = rltk::RandomNumberGenerator::new();
+
+    for _i in 0..400 {
+        let x = rng.roll_dice(1, 79);
+        let y = rng.roll_dice(1, 49);
+        let idx = xy_idx(x, y);
+        if idx != xy_idx(40, 25) {
+            map[idx] = TileType::Wall;
+        }
+    }
+
+    map
 }
 
-impl Room {
-  fn intersects(&self, other: &Room) -> bool {
-    (self.x >= other.x && other.x <= self.x && self.y >= other.y && other.y <= self.y) ||
-    (self.w >= other.w && other.w <= self.w && self.h >= other.h && other.h <= self.h)
-  }
+fn apply_room_to_map(room : &Rect, map: &mut [TileType]) {
+    for y in room.y1 +1 ..= room.y2 {
+        for x in room.x1 + 1 ..= room.x2 {
+            map[xy_idx(x, y)] = TileType::Floor;
+        }
+    }
+}
+
+fn apply_horizontal_tunnel(map: &mut [TileType], x1:i32, x2:i32, y:i32) {
+    for x in min(x1,x2) ..= max(x1,x2) {
+        let idx = xy_idx(x, y);
+        if idx > 0 && idx < 80*50 {
+            map[idx as usize] = TileType::Floor;
+        }
+    }
+}
+
+fn apply_vertical_tunnel(map: &mut [TileType], y1:i32, y2:i32, x:i32) {
+    for y in min(y1,y2) ..= max(y1,y2) {
+        let idx = xy_idx(x, y);
+        if idx > 0 && idx < 80*50 {
+            map[idx as usize] = TileType::Floor;
+        }
+    }
+}
+
+/// Makes a new map using the algorithm from http://rogueliketutorials.com/tutorials/tcod/part-3/
+/// This gives a handful of random rooms and corridors joining them together.
+pub fn new_map_rooms_and_corridors() -> (Vec<Rect>, Vec<TileType>) {
+    let mut map = vec![TileType::Wall; 80*50];
+
+    let mut rooms : Vec<Rect> = Vec::new();
+    const MAX_ROOMS : i32 = 30;
+    const MIN_SIZE : i32 = 6;
+    const MAX_SIZE : i32 = 10;
+
+    let mut rng = RandomNumberGenerator::new();
+
+    for _i in 0..MAX_ROOMS {
+        let w = rng.range(MIN_SIZE, MAX_SIZE);
+        let h = rng.range(MIN_SIZE, MAX_SIZE);
+        let x = rng.roll_dice(1, 80 - w - 1) - 1;
+        let y = rng.roll_dice(1, 50 - h - 1) - 1;
+        let new_room = Rect::new(x, y, w, h);
+        let mut ok = true;
+        for other_room in rooms.iter() {
+            if new_room.intersect(other_room) { ok = false }
+        }
+        if ok {
+            apply_room_to_map(&new_room, &mut map);
+
+            if !rooms.is_empty() {
+                let (new_x, new_y) = new_room.center();
+                let (prev_x, prev_y) = rooms[rooms.len()-1].center();
+                if rng.range(0,2) == 1 {
+                    apply_horizontal_tunnel(&mut map, prev_x, new_x, prev_y);
+                    apply_vertical_tunnel(&mut map, prev_y, new_y, new_x);
+                } else {
+                    apply_vertical_tunnel(&mut map, prev_y, new_y, prev_x);
+                    apply_horizontal_tunnel(&mut map, prev_x, new_x, new_y);
+                }
+            }
+
+            rooms.push(new_room);
+        }
+    }
+
+    (rooms, map)
+}
+
+pub fn draw_map(map: &[TileType], ctx : &mut Rltk) {
+    let mut y = 0;
+    let mut x = 0;
+    for tile in map.iter() {
+        // Render a tile depending upon the tile type
+        match tile {
+            TileType::Floor => {
+                ctx.set(x, y, RGB::from_f32(0.5, 0.5, 0.5), RGB::from_f32(0., 0., 0.), rltk::to_cp437('.'));
+            }
+            TileType::Wall => {
+                ctx.set(x, y, RGB::from_f32(0.0, 1.0, 0.0), RGB::from_f32(0., 0., 0.), rltk::to_cp437('#'));
+            }
+        }
+
+        // Move the coordinates
+        x += 1;
+        if x > 79 {
+            x = 0;
+            y += 1;
+        }
+    }
 }
