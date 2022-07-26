@@ -12,6 +12,9 @@ pub use rect::Rect;
 mod visibility_systems;
 use visibility_systems::VisibilitySystem;
 
+mod monster_ai_system;
+pub use monster_ai_system::*;
+
 pub struct State {
     pub ecs: World,
 }
@@ -20,6 +23,9 @@ impl State {
     fn run_systems(&mut self) {
         let mut vis = VisibilitySystem {};
         vis.run_now(&self.ecs);
+
+        let mut ai = MonsterAI{};
+        ai.run_now(&self.ecs);
 
         self.ecs.maintain();
     }
@@ -58,6 +64,7 @@ fn main() -> rltk::BError {
     gs.ecs.register::<Renderable>();
     gs.ecs.register::<Player>();
     gs.ecs.register::<Viewshed>();
+    gs.ecs.register::<Monster>();
 
     let map = Map::new(&mut rng);
 
@@ -72,6 +79,7 @@ fn main() -> rltk::BError {
         }
 
         gs.ecs.create_entity()
+        .with(Monster{})
         .with(Position{ x, y })
         .with(Renderable { 
             glyph,
