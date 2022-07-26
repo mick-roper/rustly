@@ -56,6 +56,24 @@ fn main() -> rltk::BError {
     gs.ecs.register::<Viewshed>();
 
     let map = Map::new(&mut rng);
+
+    for room in map.rooms.iter() {
+        let (x, y) = room.center();
+        gs.ecs.create_entity()
+        .with(Position{ x, y })
+        .with(Renderable { 
+            glyph: rltk::to_cp437('g'),
+            fg: RGB::named(rltk::RED),
+            bg: RGB::named(rltk::BLACK),
+        })
+        .with(Viewshed {
+            range: 8,
+            visible_tiles: Vec::new(),
+            dirty: true,
+        })
+        .build();
+    }
+
     let (player_x, player_y) = map.start_pos;
     gs.ecs.insert(map);
 

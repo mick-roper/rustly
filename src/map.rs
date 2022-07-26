@@ -14,11 +14,16 @@ pub struct Map {
     pub height: i32,
     pub start_pos: (i32, i32),
     pub revealed_tiles: Vec<bool>,
-    pub visible_tiles: Vec<bool>
+    pub visible_tiles: Vec<bool>,
+    pub rooms: Vec<Rect>,
 }
 
 impl Map {
     pub fn new(rng: &mut RandomNumberGenerator) -> Self {
+        const MAX_ROOMS : i32 = 30;
+        const MIN_SIZE : i32 = 6;
+        const MAX_SIZE : i32 = 10;
+
         let mut map = Map{
             tiles : vec![TileType::Wall; 80*50],
             width : 80,
@@ -26,13 +31,8 @@ impl Map {
             start_pos: (0,0),
             revealed_tiles: vec![false; 80*50],
             visible_tiles: vec![false; 80*50],
+            rooms: Vec::new()
         };
-
-        let mut rooms = Vec::new();
-
-        const MAX_ROOMS : i32 = 30;
-        const MIN_SIZE : i32 = 6;
-        const MAX_SIZE : i32 = 10;
 
         for _i in 0..MAX_ROOMS {
             let w = rng.range(MIN_SIZE, MAX_SIZE);
@@ -42,18 +42,18 @@ impl Map {
             let new_room = Rect::new(x, y, w, h);
             let mut ok = true;
             
-            for other_room in rooms.iter() {
+            for other_room in map.rooms.iter() {
                 if new_room.intersect(other_room) { ok = false }
             }
             
             if ok {
                 map.apply_room_to_map(&new_room);
 
-                if rooms.is_empty() {
+                if map.rooms.is_empty() {
                     map.start_pos = new_room.center();
                 } else {
                     let (new_x, new_y) = new_room.center();
-                    let (prev_x, prev_y) = rooms[rooms.len()-1].center();
+                    let (prev_x, prev_y) = map.rooms[map.rooms.len()-1].center();
                     if rng.range(0,2) == 1 {
                         map.apply_horizontal_tunnel(prev_x, new_x, prev_y);
                         map.apply_vertical_tunnel(prev_y, new_y, new_x);
@@ -63,7 +63,7 @@ impl Map {
                     }
                 }
 
-                rooms.push(new_room);
+                map.rooms.push(new_room);
             }
         }
 
