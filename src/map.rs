@@ -17,6 +17,7 @@ pub struct Map {
     pub revealed_tiles: Vec<bool>,
     pub visible_tiles: Vec<bool>,
     pub rooms: Vec<Rect>,
+    pub blocked: Vec<bool>,
 }
 
 impl Map {
@@ -33,6 +34,7 @@ impl Map {
             revealed_tiles: vec![false; 80 * 50],
             visible_tiles: vec![false; 80 * 50],
             rooms: Vec::new(),
+            blocked: vec![false; 80 * 50],
         };
 
         for _i in 0..MAX_ROOMS {
@@ -75,6 +77,12 @@ impl Map {
         (y as usize * self.width as usize) + x as usize
     }
 
+    pub fn populate_blocked(&mut self) {
+        for (i, tile) in self.tiles.iter_mut().enumerate() {
+            self.blocked[i] = *tile == TileType::Wall;
+        }
+    }
+
     fn apply_room_to_map(&mut self, room: &Rect) {
         for y in room.y1 + 1..=room.y2 {
             for x in room.x1 + 1..=room.x2 {
@@ -107,7 +115,7 @@ impl Map {
             return false;
         }
         let idx = self.xy_idx(x, y);
-        self.tiles[idx as usize] != TileType::Wall
+        !self.blocked[idx]
     }
 }
 
@@ -145,7 +153,7 @@ impl BaseMap for Map {
         exits
     }
 
-    fn get_pathing_distance(&self, idx1:usize, idx2:usize) -> f32 {
+    fn get_pathing_distance(&self, idx1: usize, idx2: usize) -> f32 {
         let w = self.width as usize;
         let p1 = Point::new(idx1 % w, idx1 / w);
         let p2 = Point::new(idx2 % w, idx2 / w);
