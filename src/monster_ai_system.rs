@@ -1,23 +1,38 @@
-use super::{Monster, Viewshed, Named};
+use super::{Map, Monster, Named, Position, Viewshed};
 use rltk::{console, Point};
 use specs::prelude::*;
 
 pub struct MonsterAI {}
 
 impl<'a> System<'a> for MonsterAI {
+  #[allow(clippy::type_complexity)]
   type SystemData = (
-    ReadStorage<'a, Viewshed>,
+    WriteExpect<'a, Map>,
+    WriteStorage<'a, Viewshed>,
     ReadExpect<'a, Point>,
     ReadStorage<'a, Monster>,
     ReadStorage<'a, Named>,
+    WriteStorage<'a, Position>,
   );
 
   fn run(&mut self, data: Self::SystemData) {
-    let (viewshed, player_pos, monster, named) = data;
+    let (mut map, mut viewshed, player_pos, monster, named, mut pos) = data;
 
-    for (viewshed, _monster, named) in (&viewshed, &monster, &named).join() {
+    for (mut viewshed, _monster, named, mut pos) in (&mut viewshed, &monster, &named, &mut pos).join() {
       if viewshed.visible_tiles.contains(&*player_pos) {
-        console::log(&format!("{} shouts insults!", named.name))
+        console::log(&format!("{} shouts insults", named.name));
+
+        let path = rltk::a_star_search(
+          map.xy_idx(pos.x, pos.y) as i32,
+          map.xy_idx(player_pos.x, player_pos.y) as i32,
+          &mut *map,
+        );
+
+        if path.success && path.steps.len() > 1 {
+          pos.x = path.steps[1] as i32 % map.width;
+          pos.y = path.steps[1] as i32 / map.width;
+          viewshed.dirty = true;
+        }
       }
     }
   }
