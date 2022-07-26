@@ -1,4 +1,4 @@
-use super::{Monster, Viewshed};
+use super::{Monster, Viewshed, Named};
 use rltk::{console, Point};
 use specs::prelude::*;
 
@@ -9,14 +9,15 @@ impl<'a> System<'a> for MonsterAI {
     ReadStorage<'a, Viewshed>,
     ReadExpect<'a, Point>,
     ReadStorage<'a, Monster>,
+    ReadStorage<'a, Named>,
   );
 
   fn run(&mut self, data: Self::SystemData) {
-    let (viewshed, player_pos, monster) = data;
+    let (viewshed, player_pos, monster, named) = data;
 
-    for (viewshed, _monster) in (&viewshed, &monster).join() {
+    for (viewshed, _monster, named) in (&viewshed, &monster, &named).join() {
       if viewshed.visible_tiles.contains(&*player_pos) {
-        console::log("monster is grumpy!")
+        console::log(&format!("{} shouts insults!", named.name))
       }
     }
   }

@@ -79,22 +79,25 @@ fn main() -> rltk::BError {
     gs.ecs.register::<Player>();
     gs.ecs.register::<Viewshed>();
     gs.ecs.register::<Monster>();
+    gs.ecs.register::<Named>();
 
     let map = Map::new(&mut rng);
 
-    for room in map.rooms.iter().skip(1) {
+    for (i, room) in map.rooms.iter().skip(1).enumerate() {
         let (x, y) = room.center();
 
         let glyph: rltk::FontCharType;
+        let name: String;
         let roll = rng.roll_dice(1, 2);
         match roll {
-            1 => glyph = rltk::to_cp437('g'),
-            _ => glyph = rltk::to_cp437('o'),
+            1 => {glyph = rltk::to_cp437('g'); name = "Goblin".to_string();},
+            _ => {glyph = rltk::to_cp437('o'); name= "Orc".to_string();},
         }
 
         gs.ecs
             .create_entity()
             .with(Monster {})
+            .with(Named{ name: format!("{} #{}", name , i) })
             .with(Position { x, y })
             .with(Renderable {
                 glyph,
