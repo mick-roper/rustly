@@ -12,16 +12,20 @@ pub struct Map {
     pub tiles: Vec<TileType>,
     pub width: i32,
     pub height: i32,
-    pub start_pos: (i32, i32)
+    pub start_pos: (i32, i32),
+    pub revealed_tiles: Vec<bool>,
+    pub visible_tiles: Vec<bool>
 }
 
 impl Map {
-    pub fn new() -> Self {
+    pub fn new(rng: &mut RandomNumberGenerator) -> Self {
         let mut map = Map{
             tiles : vec![TileType::Wall; 80*50],
             width : 80,
             height: 50,
-            start_pos: (0,0)
+            start_pos: (0,0),
+            revealed_tiles: vec![false; 80*50],
+            visible_tiles: vec![false; 80*50],
         };
 
         let mut rooms = Vec::new();
@@ -29,8 +33,6 @@ impl Map {
         const MAX_ROOMS : i32 = 30;
         const MIN_SIZE : i32 = 6;
         const MAX_SIZE : i32 = 10;
-
-        let mut rng = RandomNumberGenerator::new();
 
         for _i in 0..MAX_ROOMS {
             let w = rng.range(MIN_SIZE, MAX_SIZE);
