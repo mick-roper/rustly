@@ -11,12 +11,18 @@ mod rect;
 pub use rect::Rect;
 mod visibility_systems;
 use visibility_systems::VisibilitySystem;
-
 mod monster_ai_system;
 pub use monster_ai_system::*;
 
+#[derive(PartialEq, Copy, Clone)]
+pub enum RunState {
+    Running,
+    Paused,
+}
+
 pub struct State {
     pub ecs: World,
+    pub run_state: RunState,
 }
 
 impl State {
@@ -24,7 +30,7 @@ impl State {
         let mut vis = VisibilitySystem {};
         vis.run_now(&self.ecs);
 
-        let mut ai = MonsterAI{};
+        let mut ai = MonsterAI {};
         ai.run_now(&self.ecs);
 
         self.ecs.maintain();
@@ -35,8 +41,13 @@ impl GameState for State {
     fn tick(&mut self, ctx: &mut Rltk) {
         ctx.cls();
 
-        player_input(self, ctx);
-        self.run_systems();
+        if self.run_state == RunState::Running {
+            self.run_systems();
+            self.run_state = RunState::Paused;
+        } else {
+            self.run_state = player_input(self, ctx);
+        }
+
 
         draw_map(&self.ecs, ctx);
 
@@ -59,7 +70,10 @@ fn main() -> rltk::BError {
     use rltk::RltkBuilder;
     let context = RltkBuilder::simple80x50().with_title("Rustly").build()?;
 
-    let mut gs = State { ecs: World::new() };
+    let mut gs = State {
+        ecs: World::new(),
+        run_state: RunState::Running,
+    };
     gs.ecs.register::<Position>();
     gs.ecs.register::<Renderable>();
     gs.ecs.register::<Player>();
@@ -71,27 +85,28 @@ fn main() -> rltk::BError {
     for room in map.rooms.iter().skip(1) {
         let (x, y) = room.center();
 
-        let glyph : rltk::FontCharType;
+        let glyph: rltk::FontCharType;
         let roll = rng.roll_dice(1, 2);
         match roll {
-            1 => { glyph = rltk::to_cp437('g') }
-            _ => { glyph = rltk::to_cp437('o') }
+            1 => glyph = rltk::to_cp437('g'),
+            _ => glyph = rltk::to_cp437('o'),
         }
 
-        gs.ecs.create_entity()
-        .with(Monster{})
-        .with(Position{ x, y })
-        .with(Renderable { 
-            glyph,
-            fg: RGB::named(rltk::RED),
-            bg: RGB::named(rltk::BLACK),
-        })
-        .with(Viewshed {
-            range: 8,
-            visible_tiles: Vec::new(),
-            dirty: true,
-        })
-        .build();
+        gs.ecs
+            .create_entity()
+            .with(Monster {})
+            .with(Position { x, y })
+            .with(Renderable {
+                glyph,
+                fg: RGB::named(rltk::RED),
+                bg: RGB::named(rltk::BLACK),
+            })
+            .with(Viewshed {
+                range: 8,
+                visible_tiles: Vec::new(),
+                dirty: true,
+            })
+            .build();
     }
 
     let (player_x, player_y) = map.start_pos;
