@@ -1,4 +1,4 @@
-use rltk::{GameState, Rltk, RGB};
+use rltk::{GameState, Rltk, RGB, Point};
 use specs::prelude::*;
 
 mod components;
@@ -110,6 +110,7 @@ fn main() -> rltk::BError {
     }
 
     let (player_x, player_y) = map.start_pos;
+    gs.ecs.insert(Point::new(player_x, player_y));
     gs.ecs.insert(map);
 
     gs.ecs
