@@ -1,4 +1,4 @@
-use super::{Map, Monster, Named, Position, Viewshed};
+use super::{Map, Monster, Name, Position, Viewshed};
 use rltk::{console, Point};
 use specs::prelude::*;
 
@@ -11,7 +11,7 @@ impl<'a> System<'a> for MonsterAI {
     WriteStorage<'a, Viewshed>,
     ReadExpect<'a, Point>,
     ReadStorage<'a, Monster>,
-    ReadStorage<'a, Named>,
+    ReadStorage<'a, Name>,
     WriteStorage<'a, Position>,
   );
 

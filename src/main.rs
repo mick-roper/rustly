@@ -15,6 +15,10 @@ mod monster_ai_system;
 pub use monster_ai_system::*;
 mod map_indexing_system;
 pub use map_indexing_system::*;
+mod melee_combat_system;
+pub use melee_combat_system::*;
+mod damage_system;
+pub use damage_system::*;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum RunState {
@@ -38,6 +42,12 @@ impl State {
         let mut map_indexer = MapIndexingSystem{};
         map_indexer.run_now(&self.ecs);
 
+        let mut melee_combat_system = MeleeCombatSystem{};
+        melee_combat_system.run_now(&self.ecs);
+
+        let mut dmg_system = DamageSystem{};
+        dmg_system.run_now(&self.ecs);
+
         self.ecs.maintain();
     }
 }
@@ -48,6 +58,7 @@ impl GameState for State {
 
         if self.run_state == RunState::Running {
             self.run_systems();
+            delete_the_dead(&mut self.ecs);
             self.run_state = RunState::Paused;
         } else {
             self.run_state = player_input(self, ctx);
@@ -84,9 +95,11 @@ fn main() -> rltk::BError {
     gs.ecs.register::<Player>();
     gs.ecs.register::<Viewshed>();
     gs.ecs.register::<Monster>();
-    gs.ecs.register::<Named>();
+    gs.ecs.register::<Name>();
     gs.ecs.register::<BlocksTile>();
     gs.ecs.register::<CombatStats>();
+    gs.ecs.register::<WantsToMelee>();
+    gs.ecs.register::<SufferDamage>();
 
     let map = Map::new(&mut rng);
 
@@ -104,7 +117,7 @@ fn main() -> rltk::BError {
         gs.ecs
             .create_entity()
             .with(Monster {})
-            .with(Named{ name: format!("{} #{}", name , i) })
+            .with(Name{ name: format!("{} #{}", name , i) })
             .with(Position { x, y })
             .with(Renderable {
                 glyph,
@@ -147,7 +160,7 @@ fn main() -> rltk::BError {
             range: 8,
             dirty: true,
         })
-        .with(Named{ name: "Player".to_string() })
+        .with(Name{ name: "Player".to_string() })
         .with(CombatStats{
                 max_hp: 30,
                 current_hp: 30,
@@ -188,5 +201,24 @@ fn draw_map(ecs: &World, ctx: &mut Rltk) {
             x = 0;
             y += 1;
         }
+    }
+}
+
+pub fn delete_the_dead(ecs: &mut World) {
+    let mut dead: Vec<Entity> = Vec::new();
+
+    {
+        let combat_stats = ecs.read_storage::<CombatStats>();
+        let entities = ecs.entities();
+
+        for (entity, stats) in (&entities, &combat_stats).join() {
+            if stats.current_hp < 1 {
+                dead.push(entity);
+            }
+        }
+    }
+
+    for victim in dead {
+        ecs.delete_entity(victim).expect("could not delete entity")
     }
 }
