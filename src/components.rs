@@ -35,3 +35,11 @@ pub struct Named {
 
 #[derive(Component, Debug)]
 pub struct BlocksTile {}
+
+#[derive(Component)]
+pub struct CombatStats {
+    pub max_hp: i32,
+    pub current_hp: i32,
+    pub defence: i32,
+    pub power: i32,
+}

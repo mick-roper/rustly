@@ -86,6 +86,7 @@ fn main() -> rltk::BError {
     gs.ecs.register::<Monster>();
     gs.ecs.register::<Named>();
     gs.ecs.register::<BlocksTile>();
+    gs.ecs.register::<CombatStats>();
 
     let map = Map::new(&mut rng);
 
@@ -116,6 +117,12 @@ fn main() -> rltk::BError {
                 dirty: true,
             })
             .with(BlocksTile{})
+            .with(CombatStats{
+                max_hp: 16,
+                current_hp: 16,
+                defence: 1,
+                power: 2
+            })
             .build();
     }
 
@@ -141,6 +148,12 @@ fn main() -> rltk::BError {
             dirty: true,
         })
         .with(Named{ name: "Player".to_string() })
+        .with(CombatStats{
+                max_hp: 30,
+                current_hp: 30,
+                defence: 2,
+                power: 5
+            })
         .build();
 
     rltk::main_loop(context, gs)

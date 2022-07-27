@@ -1,5 +1,6 @@
 use super::Rect;
 use rltk::{Algorithm2D, BaseMap, Point, RandomNumberGenerator};
+use specs::Entity;
 use std::cmp::{max, min};
 
 #[derive(PartialEq, Copy, Clone)]
@@ -18,6 +19,7 @@ pub struct Map {
     pub visible_tiles: Vec<bool>,
     pub rooms: Vec<Rect>,
     pub blocked: Vec<bool>,
+    pub tile_content: Vec<Vec<Entity>>,
 }
 
 impl Map {
@@ -35,6 +37,7 @@ impl Map {
             visible_tiles: vec![false; 80 * 50],
             rooms: Vec::new(),
             blocked: vec![false; 80 * 50],
+            tile_content: vec![Vec::new(); 80 * 50],
         };
 
         for _i in 0..MAX_ROOMS {
@@ -80,6 +83,12 @@ impl Map {
     pub fn populate_blocked(&mut self) {
         for (i, tile) in self.tiles.iter_mut().enumerate() {
             self.blocked[i] = *tile == TileType::Wall;
+        }
+    }
+
+    pub fn clear_content_index(&mut self) {
+        for content in self.tile_content.iter_mut() {
+            content.clear();
         }
     }
 
